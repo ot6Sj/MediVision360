@@ -1,0 +1,745 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ===================================
+   PROFESSIONAL MEDICAL THEME
+   German Luxury Car Cockpit Aesthetic
+   =================================== */
+
+:root {
+  /* Slate Color Palette (Dark Mode) */
+  --slate-950: #020617;
+  --slate-900: #0f172a;
+  --slate-800: #1e293b;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-500: #64748b;
+  --slate-400: #94a3b8;
+  --slate-300: #cbd5e1;
+  --slate-200: #e2e8f0;
+  --slate-100: #f1f5f9;
+  --slate-50: #f8fafc;
+
+  /* Primary Action Color */
+  --sky-500: #0ea5e9;
+  --sky-600: #0284c7;
+  --sky-700: #0369a1;
+
+  /* Status Colors */
+  --emerald-500: #10b981;
+  /* Success/Healthy */
+  --red-500: #ef4444;
+  /* Danger/Tumor */
+  --amber-500: #f59e0b;
+  /* Warning */
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  /* Spacing */
+  --sidebar-width: 250px;
+  --spacing-unit: 8px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* LIGHT MODE OVERRIDES */
+[data-theme='light'] {
+  /* Inverted Slate Palette */
+  --slate-950: #ffffff;
+  --slate-900: #f8fafc;
+  /* Main Background */
+  --slate-800: #ffffff;
+  /* Card Background */
+  --slate-700: #e2e8f0;
+  /* Borders */
+  --slate-600: #cbd5e1;
+  --slate-500: #94a3b8;
+  --slate-400: #64748b;
+  --slate-300: #475569;
+  --slate-200: #334155;
+  --slate-100: #1e293b;
+  --slate-50: #0f172a;
+  /* Main Text */
+
+  /* Shadow Adjustments for Light Mode */
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+/* ===================================
+   GLOBAL RESETS & BASE STYLES
+   =================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--slate-900);
+  color: var(--slate-50);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===================================
+   PROFESSIONAL ANIMATIONS
+   =================================== */
+
+/* 1. Skeleton Loading (Shimmer Effect) */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+      var(--slate-800) 0px,
+      var(--slate-700) 40px,
+      var(--slate-800) 80px);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* 2. Biological Pulse (Analyzing State) */
+@keyframes pulse-blue {
+  0% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(14, 165, 233, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+  }
+}
+
+@keyframes pulse-amber {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.pulse-analyzing {
+  animation: pulse-blue 2s infinite;
+}
+
+.pulse-warning {
+  animation: pulse-amber 2s infinite;
+}
+
+/* 3. Smooth Reveal (Cascading Fade In) */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  animation: reveal 0.4s var(--transition-normal) backwards;
+}
+
+.reveal-delay-1 {
+  animation-delay: 0.1s;
+}
+
+.reveal-delay-2 {
+  animation-delay: 0.2s;
+}
+
+.reveal-delay-3 {
+  animation-delay: 0.3s;
+}
+
+/* 4. Fade In (General) */
+.fade-in {
+  animation: reveal 0.3s var(--transition-normal);
+}
+
+/* ===================================
+   MEDICAL CARD STYLES
+   =================================== */
+
+.medical-card {
+  background-color: var(--slate-800);
+  border: 1px solid var(--slate-700);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+}
+
+.medical-card:hover {
+  border-color: var(--sky-500);
+  box-shadow: 0 8px 16px -4px rgba(14, 165, 233, 0.1);
+}
+
+.medical-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.medical-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--slate-50);
+}
+
+.medical-card-subtitle {
+  font-size: 0.875rem;
+  color: var(--slate-400);
+  margin-top: 4px;
+}
+
+/* ===================================
+   BUTTON STYLES
+   =================================== */
+
+.btn {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background-color: var(--sky-500);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--sky-600);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.btn-secondary {
+  background-color: var(--slate-700);
+  color: var(--slate-50);
+}
+
+.btn-secondary:hover {
+  background-color: var(--slate-600);
+}
+
+.btn-danger {
+  background-color: var(--red-500);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+}
+
+/* ===================================
+   BADGE STYLES (Pill-Shaped)
+   =================================== */
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  display: inline-block;
+  border: 1px solid;
+}
+
+.badge-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--emerald-500);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.badge-danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--red-500);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--amber-500);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.badge-info {
+  background-color: rgba(14, 165, 233, 0.1);
+  color: var(--sky-500);
+  border-color: rgba(14, 165, 233, 0.2);
+}
+
+/* ===================================
+   PROGRESS BAR (Loading)
+   =================================== */
+
+.progress-bar-container {
+  width: 100%;
+  height: 3px;
+  background-color: var(--slate-700);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--sky-500);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+}
+
+.progress-bar-animated {
+  animation: progress-indeterminate 1.5s infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* ===================================
+   UPLOAD ZONE (Drag & Drop)
+   =================================== */
+
+.upload-zone {
+  border: 2px dashed var(--slate-600);
+  border-radius: var(--radius-md);
+  padding: 48px 24px;
+  text-align: center;
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  background-color: var(--slate-800);
+  display: block;
+  width: 100%;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: var(--sky-500);
+  background-color: rgba(14, 165, 233, 0.05);
+}
+
+.upload-zone-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 12px;
+  color: var(--slate-400);
+}
+
+.upload-zone:hover .upload-zone-icon {
+  color: var(--sky-500);
+}
+
+/* Fixed input styling */
+.upload-zone input[type="file"] {
+  display: none !important;
+}
+
+/* ===================================
+   CONFIDENCE METER (Horizontal Bar)
+   =================================== */
+
+.confidence-meter {
+  width: 100%;
+  height: 8px;
+  background-color: var(--slate-700);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.confidence-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.confidence-fill-success {
+  background: linear-gradient(90deg, var(--emerald-500), #059669);
+}
+
+.confidence-fill-danger {
+  background: linear-gradient(90deg, var(--red-500), #dc2626);
+}
+
+/* ===================================
+   UTILITY CLASSES
+   =================================== */
+
+.text-slate-50 {
+  color: var(--slate-50);
+}
+
+.text-slate-400 {
+  color: var(--slate-400);
+}
+
+.text-sky-500 {
+  color: var(--sky-500);
+}
+
+.text-emerald-500 {
+  color: var(--emerald-500);
+}
+
+.text-red-500 {
+  color: var(--red-500);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Responsive Grid */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===================================
+   PROFESSIONAL ANIMATIONS
+   =================================== */
+
+/* Smooth card hover effects */
+.medical-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.medical-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+/* Button animations */
+.btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 12px -3px rgba(14, 165, 233, 0.4);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Page fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Reveal animation for cards */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.reveal {
+  animation: reveal 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.reveal-delay-1 {
+  animation: reveal 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+  opacity: 0;
+}
+
+.reveal-delay-2 {
+  animation: reveal 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+  opacity: 0;
+}
+
+.reveal-delay-3 {
+  animation: reveal 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
+  opacity: 0;
+}
+
+/* Pulse animation for active status */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+.pulse-analyzing {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Glow effect for active elements */
+@keyframes glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(14, 165, 233, 0.5), 0 0 10px rgba(14, 165, 233, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.8), 0 0 20px rgba(14, 165, 233, 0.5);
+  }
+}
+
+.glow-active {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Loading bar animation */
+@keyframes loadingBar {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+/* Smooth transitions for interactive elements */
+input,
+select,
+textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  transform: scale(1.01);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+/* Icon animations */
+svg {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn:hover svg,
+.sidebar-link:hover svg {
+  transform: scale(1.1);
+}
+
+/* Badge pulse for active status */
+.badge-success {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Upload zone animation */
+.upload-zone {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upload-zone.drag-over {
+  border-color: var(--sky-500);
+  background: rgba(14, 165, 233, 0.05);
+  transform: scale(1.02);
+}
+
+.upload-zone:hover {
+  border-color: rgba(14, 165, 233, 0.5);
+  background: rgba(14, 165, 233, 0.03);
+}
+
+/* Skeleton loading animation */
+@keyframes skeleton {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+      var(--slate-800) 0%,
+      var(--slate-700) 50%,
+      var(--slate-800) 100%);
+  background-size: 200% 100%;
+  animation: skeleton 1.5s ease-in-out infinite;
+}
+
+/* ===================================
+   SIDEBAR ANIMATIONS
+   =================================== */
+
+/* Sidebar slide-in on page load */
+.sidebar-container {
+  animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Sidebar link animations */
+.sidebar-link {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ripple effect for sidebar links */
+.sidebar-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0%;
+  height: 100%;
+  background: rgba(14, 165, 233, 0.05);
+  transition: width 0.3s ease;
+  z-index: -1;
+}
+
+.sidebar-link:hover::after {
+  width: 100%;
+}
+
+/* Sidebar navigation stagger animation */
+.sidebar-nav button:nth-child(1) {
+  animation: fadeIn 0.3s ease 0.1s backwards;
+}
+
+.sidebar-nav button:nth-child(2) {
+  animation: fadeIn 0.3s ease 0.15s backwards;
+}
+
+.sidebar-nav button:nth-child(3) {
+  animation: fadeIn 0.3s ease 0.2s backwards;
+}
+
+.sidebar-nav button:nth-child(4) {
+  animation: fadeIn 0.3s ease 0.25s backwards;
+}
+
+.sidebar-nav button:nth-child(5) {
+  animation: fadeIn 0.3s ease 0.3s backwards;
+}
