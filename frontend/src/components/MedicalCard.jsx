@@ -1,3 +1,5 @@
+/* Copyright (c) 2025 ot6_j. All Rights Reserved. */
+
 // Professional medical card wrapper
 // Clean slate-800 background with subtle shadow
 

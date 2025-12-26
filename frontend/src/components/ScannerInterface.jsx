@@ -1,3 +1,5 @@
+/* Copyright (c) 2025 ot6_j. All Rights Reserved. */
+
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';

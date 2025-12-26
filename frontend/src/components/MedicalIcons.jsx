@@ -1,3 +1,5 @@
+/* Copyright (c) 2025 ot6_j. All Rights Reserved. */
+
 // Medical SVG Icon Components for MediVision 360
 // Redesigned for clarity and professional appearance
 import React from 'react';

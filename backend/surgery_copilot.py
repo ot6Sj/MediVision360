@@ -1,3 +1,5 @@
+# Copyright (c) 2025 ot6_j. All Rights Reserved.
+
 def analyze_surgical_context(tool_count, hand_count, blood_percent, sharpness):
     """Analyzes surgical context regarding tools, hands, blood, and visibility."""
     suggestion = "Standard procedure. Continue."

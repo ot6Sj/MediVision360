@@ -1,3 +1,5 @@
+/* Copyright (c) 2025 ot6_j. All Rights Reserved. */
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';

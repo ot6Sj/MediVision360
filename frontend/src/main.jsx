@@ -1,3 +1,5 @@
+/* Copyright (c) 2025 ot6_j. All Rights Reserved. */
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'

@@ -1,3 +1,5 @@
+/* Copyright (c) 2025 ot6_j. All Rights Reserved. */
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 

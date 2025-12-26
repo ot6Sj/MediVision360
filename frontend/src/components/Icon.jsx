@@ -1,3 +1,5 @@
+/* Copyright (c) 2025 ot6_j. All Rights Reserved. */
+
 // Professional Medical Icon System - BULLETPROOF VERSION
 // Uses inline styles to guarantee rendering
 
