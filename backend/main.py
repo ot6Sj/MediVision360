@@ -35,10 +35,17 @@ app.add_middleware(
 )
 
 try:
+    import torch
     from ultralytics import YOLO
+    from ultralytics.nn.tasks import DetectionModel
     import base64
-    model_surgery = YOLO('yolov8n.pt')
-    logger.info("YOLOv8 loaded")
+    
+    # Allow ultralytics classes for torch.load (PyTorch 2.6+ security)
+    torch.serialization.add_safe_globals([DetectionModel])
+    
+    # Using YOLOv8s (small) for better accuracy than nano
+    model_surgery = YOLO('yolov8s.pt')
+    logger.info("YOLOv8s (small) loaded - more accurate than nano")
 except Exception as e:
     logger.warning(f"YOLOv8 not available: {e}")
     model_surgery = None
@@ -110,132 +117,186 @@ async def root():
 
 
 @app.post("/api/scan/neuro")
-async def scan_neuro(file: UploadFile = File(...)):
-    """Brain Tumor Detection Endpoint."""
+async def scan_neuro(file: UploadFile = File(...), mode: str = "fast"):
+    """
+    Brain Tumor Detection Endpoint.
+    
+    mode="fast" -> Quick ResNet screening (Yes/No + Confidence)
+    mode="precision" -> Full morphometric analysis (Measurements, Mask, Risk)
+    """
+    import time
+    start_time = time.time()
+    
     try:
         contents = await file.read()
         model = get_neuro_model()
         
-        if model is not None:
-            import tensorflow as tf
-            import base64
-            from tensorflow.keras.models import Model
+        if model is None:
+            return create_mock_response("neuro", 0.98, "Tumor Detected")
+        
+        import tensorflow as tf
+        import base64
+        
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            raise ValueError("Failed to decode image.")
+        
+        img_resized = cv2.resize(img, (224, 224))
+        img_array = np.expand_dims(img_resized, axis=0)
+        x = tf.keras.applications.resnet50.preprocess_input(img_array)
+        
+        # ResNet prediction (used by both modes)
+        predictions = model.predict(x, verbose=0)
+        score_tumeur = float(predictions[0][1])
+        
+        logger.info(f"Mode: {mode} | Tumor confidence: {score_tumeur * 100:.2f}%")
+        
+        # ================================================================
+        # MODE FAST: Quick Screening (ResNet only)
+        # ================================================================
+        if mode == "fast":
+            elapsed = time.time() - start_time
             
-            nparr = np.frombuffer(contents, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
-            if img is None:
-                raise ValueError("Failed to decode image.")
-            
-            img_resized = cv2.resize(img, (224, 224))
-            img_array = np.expand_dims(img_resized, axis=0)
-            x = tf.keras.applications.resnet50.preprocess_input(img_array)
-            
-            predictions = model.predict(x, verbose=0)
-            score_tumeur = float(predictions[0][1])
-            
-            logger.info(f"Tumor confidence: {score_tumeur * 100:.2f}%")
-            
-            heatmap_base64 = None
-            try:
-                if len(img_resized.shape) == 3:
-                    gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
-                else:
-                    gray = img_resized.copy()
-                
-                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-                enhanced = clahe.apply(gray)
-                
-                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(enhanced)
-                thresh_value = max_val * 0.70
-                _, mask = cv2.threshold(enhanced, thresh_value, 255, cv2.THRESH_BINARY)
-                
-                kernel = np.ones((5, 5), np.uint8)
-                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
-                
-                heatmap_blur = cv2.GaussianBlur(mask, (41, 41), 0)
-                heatmap_colored = cv2.applyColorMap(heatmap_blur, cv2.COLORMAP_JET)
-                
-                if len(img_resized.shape) == 2:
-                    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_GRAY2RGB)
-                else:
-                    img_rgb = img_resized.copy()
-                
-                superimposed = cv2.addWeighted(img_rgb, 0.6, heatmap_colored, 0.4, 0)
-                
-                _, buffer = cv2.imencode('.png', superimposed)
-                heatmap_base64 = base64.b64encode(buffer).decode('utf-8')
-                
-            except Exception as e:
-                logger.error(f"Segmentation error: {str(e)}")
-                heatmap_base64 = None
-                    
             threshold_met = score_tumeur >= 0.70
             
             if threshold_met:
-                resultat = "Tumor Detected"
-                diagnosis = f"Tumor detected with {score_tumeur * 100:.2f}% confidence."
-                recommendation = "Immediate biopsy required."
+                diagnostic = "Tumor Detected"
+                action = "Switch to Precision mode for detailed measurements."
             else:
-                resultat = "Healthy"
-                diagnosis = f"Scan appears healthy with {(1 - score_tumeur) * 100:.2f}% confidence."
-                recommendation = "Continue monitoring."
+                diagnostic = "Healthy"
+                action = "No further action required. Continue routine monitoring."
+            
+            # Generate simple heatmap for visualization
+            heatmap_base64 = None
+            try:
+                gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY) if len(img_resized.shape) == 3 else img_resized.copy()
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+                enhanced = clahe.apply(gray)
+                _, max_val, _, _ = cv2.minMaxLoc(enhanced)
+                _, mask = cv2.threshold(enhanced, max_val * 0.70, 255, cv2.THRESH_BINARY)
+                kernel = np.ones((5, 5), np.uint8)
+                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
+                heatmap_blur = cv2.GaussianBlur(mask, (41, 41), 0)
+                heatmap_colored = cv2.applyColorMap(heatmap_blur, cv2.COLORMAP_JET)
+                img_rgb = img_resized.copy() if len(img_resized.shape) == 3 else cv2.cvtColor(img_resized, cv2.COLOR_GRAY2RGB)
+                superimposed = cv2.addWeighted(img_rgb, 0.6, heatmap_colored, 0.4, 0)
+                _, buffer = cv2.imencode('.png', superimposed)
+                heatmap_base64 = base64.b64encode(buffer).decode('utf-8')
+            except Exception as e:
+                logger.warning(f"Fast mode heatmap generation failed: {e}")
             
             response = {
+                "mode": "RAPID SCREENING (ResNet50)",
                 "filename": file.filename,
-                "diagnostic": resultat,
-                "confiance": f"{score_tumeur * 100:.2f}%",
+                "diagnostic": diagnostic,
+                "confiance": f"{score_tumeur * 100:.1f}%",
                 "confidence": round(score_tumeur * 100, 1),
-                "prediction": resultat,
-                "diagnosis": diagnosis,
-                "recommendation": recommendation,
+                "temps_calcul": f"{elapsed:.2f}s",
+                "action": action,
                 "threshold_met": threshold_met,
-                "message": "Analysis completed.",
                 "probabilities": {
                     "healthy": float(predictions[0][0]),
                     "tumor": float(predictions[0][1])
                 }
             }
             
-            if threshold_met and heatmap_base64:
-                try:
-                    from neuro_advanced import analyze_heatmap_for_measurements
-                    
-                    advanced_data = analyze_heatmap_for_measurements(
-                        heatmap_colored, 
-                        img_resized,
-                        round(score_tumeur * 100, 1)
-                    )
-                    
-                    if advanced_data:
-                        response["advanced_analysis"] = {
-                            "measurements": advanced_data["measurements"],
-                            "risk": advanced_data["risk"],
-                            "recommendations": advanced_data["recommendations"]
-                        }
-                        
-                        _, buffer = cv2.imencode('.png', advanced_data["annotated_image"])
-                        annotated_b64 = base64.b64encode(buffer).decode('utf-8')
-                        response["annotated_image"] = f"data:image/png;base64,{annotated_b64}"
-                        
-                except Exception as e:
-                    logger.warning(f"Advanced analysis failed: {e}")
-            
             if heatmap_base64:
                 response["heatmap"] = f"data:image/png;base64,{heatmap_base64}"
-            else:
-                if len(img_resized.shape) == 2:
-                    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_GRAY2RGB)
-                else:
-                    img_rgb = img_resized.copy()
-                _, buffer = cv2.imencode('.png', img_rgb)
-                fallback_base64 = base64.b64encode(buffer).decode('utf-8')
-                response["heatmap"] = f"data:image/png;base64,{fallback_base64}"
             
             return response
+        
+        # ================================================================
+        # MODE PRECISION: Full Morphometric Analysis
+        # ================================================================
+        elif mode == "precision":
+            from neuro_advanced import analyze_heatmap_for_measurements
+            
+            # Generate segmentation heatmap
+            gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY) if len(img_resized.shape) == 3 else img_resized.copy()
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced = clahe.apply(gray)
+            _, max_val, _, _ = cv2.minMaxLoc(enhanced)
+            _, mask = cv2.threshold(enhanced, max_val * 0.70, 255, cv2.THRESH_BINARY)
+            kernel = np.ones((5, 5), np.uint8)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
+            heatmap_blur = cv2.GaussianBlur(mask, (41, 41), 0)
+            heatmap_colored = cv2.applyColorMap(heatmap_blur, cv2.COLORMAP_JET)
+            
+            # Generate basic heatmap overlay
+            img_rgb = img_resized.copy() if len(img_resized.shape) == 3 else cv2.cvtColor(img_resized, cv2.COLOR_GRAY2RGB)
+            superimposed = cv2.addWeighted(img_rgb, 0.6, heatmap_colored, 0.4, 0)
+            _, buffer = cv2.imencode('.png', superimposed)
+            heatmap_base64 = base64.b64encode(buffer).decode('utf-8')
+            
+            # Run advanced morphometric analysis
+            advanced_data = analyze_heatmap_for_measurements(
+                heatmap_colored, 
+                img_resized,
+                round(score_tumeur * 100, 1)
+            )
+            
+            elapsed = time.time() - start_time
+            
+            if advanced_data:
+                # Encode binary mask (B&W)
+                _, mask_buffer = cv2.imencode('.png', advanced_data["mask"])
+                mask_b64 = base64.b64encode(mask_buffer).decode('utf-8')
+                
+                # Encode annotated image
+                _, annotated_buffer = cv2.imencode('.png', advanced_data["annotated_image"])
+                annotated_b64 = base64.b64encode(annotated_buffer).decode('utf-8')
+                
+                response = {
+                    "mode": "SURGICAL PLANNING (Segmentation)",
+                    "filename": file.filename,
+                    "diagnostic": "Complete Morphometric Analysis",
+                    "confiance": f"{score_tumeur * 100:.1f}%",
+                    "confidence": round(score_tumeur * 100, 1),
+                    "temps_calcul": f"{elapsed:.2f}s",
+                    "threshold_met": score_tumeur >= 0.70,
+                    "data": advanced_data["measurements"],
+                    "risk": advanced_data["risk"],
+                    "recommendations": advanced_data["recommendations"],
+                    "image_masque": f"data:image/png;base64,{mask_b64}",
+                    "annotated_image": f"data:image/png;base64,{annotated_b64}",
+                    "heatmap": f"data:image/png;base64,{heatmap_base64}",
+                    "probabilities": {
+                        "healthy": float(predictions[0][0]),
+                        "tumor": float(predictions[0][1])
+                    }
+                }
+            else:
+                # Fallback if advanced analysis fails
+                response = {
+                    "mode": "SURGICAL PLANNING (Segmentation)",
+                    "filename": file.filename,
+                    "diagnostic": "No significant lesion detected for measurement",
+                    "confiance": f"{score_tumeur * 100:.1f}%",
+                    "confidence": round(score_tumeur * 100, 1),
+                    "temps_calcul": f"{elapsed:.2f}s",
+                    "threshold_met": False,
+                    "data": None,
+                    "risk": {"level": "LOW", "score": 0, "factors": []},
+                    "recommendations": [{"action": "Continue monitoring", "delai": "6 months", "raison": "No abnormality detected"}],
+                    "heatmap": f"data:image/png;base64,{heatmap_base64}",
+                    "probabilities": {
+                        "healthy": float(predictions[0][0]),
+                        "tumor": float(predictions[0][1])
+                    }
+                }
+            
+            return response
+        
+        # ================================================================
+        # INVALID MODE: Return error
+        # ================================================================
         else:
-            return create_mock_response("neuro", 0.98, "Tumor Detected")
+            raise HTTPException(status_code=400, detail=f"Invalid mode '{mode}'. Use 'fast' or 'precision'.")
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in neuro scan: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -307,9 +368,10 @@ async def scan_derma(file: UploadFile = File(...)):
 
 @app.post("/api/scan/pharma")
 async def scan_pharma(file: UploadFile = File(...)):
-    """Pharmacy: OCR Analysis."""
+    """Pharmacy: OCR Analysis + Package Authenticity Check."""
     try:
         from pharma_scraper import process_pharma_image
+        from security_check import check_authenticity
         
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
@@ -318,7 +380,12 @@ async def scan_pharma(file: UploadFile = File(...)):
         if img is None:
             raise ValueError("Failed to decode image")
         
+        # 1. OCR Analysis
         result = process_pharma_image(img)
+        
+        # 2. Package Authenticity Check (ORB Feature Matching)
+        medicine_name = result.get('nom_detecte', '')
+        auth_result = check_authenticity(img, medicine_name)
         
         if "error" in result:
             return {
@@ -326,7 +393,8 @@ async def scan_pharma(file: UploadFile = File(...)):
                 "message": result["error"],
                 "nom_detecte": result.get("nom_detecte", ""),
                 "ocr_raw": result.get("ocr_raw", []),
-                "threshold_met": False
+                "threshold_met": False,
+                "authenticity": auth_result
             }
         
         return {
@@ -342,6 +410,14 @@ async def scan_pharma(file: UploadFile = File(...)):
             "securite": {
                 "niveau": result['niveau_risque'],
                 "alertes": result['mots_clefs_alertes']
+            },
+            "authenticity": {
+                "verified": auth_result['verified'],
+                "status": auth_result['status'],
+                "message": auth_result['message'],
+                "confidence": auth_result.get('confidence', 0),
+                "matches": auth_result['matches_count'],
+                "visual_proof": auth_result.get('visual_proof')
             },
             "threshold_met": result['niveau_risque'] == "ATTENTION"
         }
@@ -432,18 +508,68 @@ async def scan_surgery(file: UploadFile = File(...)):
                 "method": "AI Co-Pilot Only"
             }
         
-        results = model_surgery.predict(img, classes=[76, 0], conf=0.3, verbose=False)
+        # Surgical-relevant class IDs in COCO:
+        # 0=person (hands), 42=fork (retractor-like), 43=knife (scalpel), 44=spoon (instrument), 76=scissors
+        SURGICAL_CLASSES = [0, 42, 43, 44, 76]
+        SURGICAL_LABELS = {
+            0: 'Hands/Person',
+            42: 'Retractor (fork)',
+            43: 'Scalpel (knife)', 
+            44: 'Instrument (spoon)',
+            76: 'Scissors'
+        }
         
+        # YOLO detection - only surgical-relevant classes
+        results = model_surgery.predict(img, classes=SURGICAL_CLASSES, conf=0.3, verbose=False)
+        
+        # Parse detections
+        detections = []
         tool_count = 0
         hand_count = 0
+        
         for box in results[0].boxes:
-            cls = int(box.cls)
-            if cls == 76:
+            cls_id = int(box.cls)
+            conf = float(box.conf)
+            xyxy = box.xyxy[0].tolist()  # [x1, y1, x2, y2]
+            
+            # Use surgical label instead of COCO label
+            label = SURGICAL_LABELS.get(cls_id, f"Object {cls_id}")
+            
+            detections.append({
+                "class_id": cls_id,
+                "label": label,
+                "confidence": round(conf * 100, 1),
+                "bbox": [int(x) for x in xyxy]
+            })
+            
+            # Count surgical tools and hands
+            if cls_id in [42, 43, 44, 76]:  # tools
                 tool_count += 1
-            elif cls == 0:
+            elif cls_id == 0:  # person/hands
                 hand_count += 1
         
-        img_annotated = results[0].plot()
+        # Start with original image for annotation
+        img_annotated = img.copy()
+        
+        # Draw custom annotations for surgical detections only
+        for det in detections:
+            x1, y1, x2, y2 = det['bbox']
+            label_text = f"{det['label']} {det['confidence']}%"
+            
+            # Color coding: green for tools, blue for hands
+            if det['class_id'] == 0:
+                color = (255, 165, 0)  # Orange for hands
+            else:
+                color = (0, 255, 0)  # Green for tools
+            
+            # Draw bounding box
+            cv2.rectangle(img_annotated, (x1, y1), (x2, y2), color, 3)
+            
+            # Draw label background
+            (tw, th), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(img_annotated, (x1, y1 - th - 10), (x1 + tw + 10, y1), color, -1)
+            cv2.putText(img_annotated, label_text, (x1 + 5, y1 - 5), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
         
         is_bleeding, blood_pct, mask_blood = detect_hemorrhage(img)
         is_smoke, sharpness = check_visibility(img)
@@ -480,6 +606,8 @@ async def scan_surgery(file: UploadFile = File(...)):
                 "blood_level": copilot['blood_level'],
                 "visibility_status": copilot['visibility_status']
             },
+            "detections": detections,
+            "total_objects": len(detections),
             "image": f"data:image/jpeg;base64,{img_base64}",
             "threshold_met": alert_level in ["red", "orange"]
         }
@@ -541,6 +669,48 @@ async def scan_surgery_video(file: UploadFile = File(...)):
         
     except Exception as e:
         logger.error(f"Video processing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/scan/surgery-video-realtime")
+async def scan_surgery_video_realtime(file: UploadFile = File(...)):
+    """
+    Real-time synchronized video analysis.
+    Returns annotated H.264 video + per-second timeline for synchronized playback.
+    """
+    try:
+        from video_processor import process_full_video
+        import tempfile
+        import os
+        
+        # Save uploaded video to temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
+            contents = await file.read()
+            tmp_file.write(contents)
+            video_path = tmp_file.name
+        
+        logger.info(f"Processing video for real-time playback: {video_path}")
+        
+        # Process entire video with YOLO annotations at 10 FPS
+        result = process_full_video(video_path, model_surgery, target_fps=10)
+        
+        # Clean up temp file
+        os.unlink(video_path)
+        
+        logger.info(f"Video processed: {result['processed_frames']} frames, {result['total_seconds']}s")
+        
+        return {
+            "status": "SUCCESS",
+            "video": f"data:{result['video_mime']};base64,{result['video_base64']}",
+            "duration": result["duration"],
+            "fps": result["fps"],
+            "total_seconds": result["total_seconds"],
+            "timeline": result["timeline"],
+            "summary": result["summary"]
+        }
+        
+    except Exception as e:
+        logger.error(f"Real-time video processing error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

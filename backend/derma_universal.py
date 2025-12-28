@@ -3,20 +3,32 @@
 from transformers import pipeline
 from PIL import Image
 import logging
+import os
+
+# Force PyTorch only (avoid TensorFlow conflict)
+os.environ["USE_TORCH"] = "1"
 
 logger = logging.getLogger(__name__)
 
 _clip_classifier = None
 
 def get_clip_classifier():
-    """Lazily loads the CLIP classifier."""
+    """Lazily loads the CLIP classifier using PyTorch."""
     global _clip_classifier
     if _clip_classifier is None:
-        logger.info("Loading CLIP Universal Classifier...")
-        _clip_classifier = pipeline(
-            "zero-shot-image-classification", 
-            model="openai/clip-vit-base-patch32"
-        )
+        logger.info("Loading CLIP Universal Classifier (PyTorch)...")
+        try:
+            # Force PyTorch framework and use safetensors
+            _clip_classifier = pipeline(
+                "zero-shot-image-classification", 
+                model="openai/clip-vit-base-patch32",
+                framework="pt",  # Force PyTorch
+                use_safetensors=True  # Use safetensors format
+            )
+            logger.info("CLIP loaded successfully!")
+        except Exception as e:
+            logger.error(f"Failed to load CLIP: {e}")
+            raise
     return _clip_classifier
 
 def analyze_skin_universal(image_pil):

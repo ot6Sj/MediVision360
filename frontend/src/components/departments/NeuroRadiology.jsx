@@ -14,6 +14,8 @@ export default function NeuroRadiology() {
     const [result, setResult] = useState(null);
     const [heatmapImage, setHeatmapImage] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
+    const [scanMode, setScanMode] = useState(null); // 'fast' or 'precision'
+    const [rotation, setRotation] = useState(0); // Image rotation in degrees
 
     const handleImageUpload = async (file, preview) => {
         console.log('=== UPLOAD STARTED ===');
@@ -27,8 +29,8 @@ export default function NeuroRadiology() {
             const formData = new FormData();
             formData.append('file', file);
 
-            console.log('Making API call to /api/scan/neuro...');
-            const response = await axios.post('/api/scan/neuro', formData, {
+            console.log('Making API call to /api/scan/neuro with mode:', scanMode);
+            const response = await axios.post(`/api/scan/neuro?mode=${scanMode}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
@@ -65,7 +67,12 @@ export default function NeuroRadiology() {
         setResult(null);
         setHeatmapImage(null);
         setShowDetails(false);
+        setScanMode(null);
+        setRotation(0);
     };
+
+    const rotateLeft = () => setRotation(prev => (prev - 90) % 360);
+    const rotateRight = () => setRotation(prev => (prev + 90) % 360);
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
@@ -96,50 +103,209 @@ export default function NeuroRadiology() {
 
             {/* Upload or Results */}
             {!uploadedImage ? (
-                <MedicalCard title="Upload MRI Scan" subtitle="DICOM, JPEG, or PNG format">
-                    <label
-                        className="upload-zone"
-                        onDragOver={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.classList.add('drag-over');
-                        }}
-                        onDragLeave={(e) => {
-                            e.currentTarget.classList.remove('drag-over');
-                        }}
-                        onDrop={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.classList.remove('drag-over');
-                            const file = e.dataTransfer.files[0];
-                            if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => handleImageUpload(file, reader.result);
-                                reader.readAsDataURL(file);
-                            }
-                        }}
-                    >
-                        <Icon name="upload" className="upload-zone-icon" />
-                        <div style={{
-                            fontSize: '0.875rem',
-                            color: 'var(--slate-400)',
-                            marginBottom: '8px'
-                        }}>
-                            Drag and drop MRI scan here, or click to browse
-                        </div>
-                        <div style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--slate-500)',
-                            fontFamily: 'var(--font-mono)'
-                        }}>
-                            Supported: JPEG, PNG, DICOM
-                        </div>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            style={{ display: 'none' }}
-                        />
-                    </label>
-                </MedicalCard>
+                <>
+                    {/* Mode Selection */}
+                    {!scanMode ? (
+                        <MedicalCard title="Select Analysis Mode" subtitle="Choose the appropriate mode for your diagnostic needs">
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1rem' }}>
+                                {/* Fast Mode Card */}
+                                <div
+                                    onClick={() => setScanMode('fast')}
+                                    style={{
+                                        padding: '1.5rem',
+                                        borderRadius: 'var(--radius-md)',
+                                        background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(6, 182, 212, 0.1))',
+                                        border: '2px solid rgba(14, 165, 233, 0.3)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        textAlign: 'center'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.borderColor = 'var(--sky-500)';
+                                        e.currentTarget.style.boxShadow = '0 8px 32px rgba(14, 165, 233, 0.25)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.borderColor = 'rgba(14, 165, 233, 0.3)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, var(--sky-500), var(--cyan-500))',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        margin: '0 auto 1rem',
+                                        fontSize: '1.75rem'
+                                    }}>
+                                        👁️
+                                    </div>
+                                    <h3 style={{
+                                        fontSize: '1.125rem',
+                                        fontWeight: 700,
+                                        color: 'var(--sky-400)',
+                                        marginBottom: '0.5rem'
+                                    }}>
+                                        Rapid Screening
+                                    </h3>
+                                    <p style={{
+                                        fontSize: '0.8125rem',
+                                        color: 'var(--slate-400)',
+                                        marginBottom: '0.75rem',
+                                        lineHeight: 1.5
+                                    }}>
+                                        Quick triage for large volumes of scans
+                                    </p>
+                                    <div style={{
+                                        fontSize: '0.75rem',
+                                        fontFamily: 'var(--font-mono)',
+                                        color: 'var(--slate-500)',
+                                        padding: '0.5rem',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderRadius: 'var(--radius-sm)'
+                                    }}>
+                                        ResNet50 • ~0.1s • Oui/Non
+                                    </div>
+                                </div>
+
+                                {/* Precision Mode Card */}
+                                <div
+                                    onClick={() => setScanMode('precision')}
+                                    style={{
+                                        padding: '1.5rem',
+                                        borderRadius: 'var(--radius-md)',
+                                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(168, 85, 247, 0.1))',
+                                        border: '2px solid rgba(139, 92, 246, 0.3)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        textAlign: 'center'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.borderColor = 'var(--violet-500)';
+                                        e.currentTarget.style.boxShadow = '0 8px 32px rgba(139, 92, 246, 0.25)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, var(--violet-500), var(--purple-500))',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        margin: '0 auto 1rem',
+                                        fontSize: '1.75rem'
+                                    }}>
+                                        📐
+                                    </div>
+                                    <h3 style={{
+                                        fontSize: '1.125rem',
+                                        fontWeight: 700,
+                                        color: 'var(--violet-400)',
+                                        marginBottom: '0.5rem'
+                                    }}>
+                                        Surgical Planning
+                                    </h3>
+                                    <p style={{
+                                        fontSize: '0.8125rem',
+                                        color: 'var(--slate-400)',
+                                        marginBottom: '0.75rem',
+                                        lineHeight: 1.5
+                                    }}>
+                                        Detailed measurements for surgery prep
+                                    </p>
+                                    <div style={{
+                                        fontSize: '0.75rem',
+                                        fontFamily: 'var(--font-mono)',
+                                        color: 'var(--slate-500)',
+                                        padding: '0.5rem',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderRadius: 'var(--radius-sm)'
+                                    }}>
+                                        U-Net • ~1.5s • Mesures
+                                    </div>
+                                </div>
+                            </div>
+                        </MedicalCard>
+                    ) : (
+                        /* Upload Zone - shown after mode selection */
+                        <MedicalCard
+                            title={`Upload MRI Scan`}
+                            subtitle={`Mode: ${scanMode === 'fast' ? 'Rapid Screening (ResNet50)' : 'Surgical Planning (Segmentation)'}`}
+                        >
+                            <div style={{ marginBottom: '1rem' }}>
+                                <button
+                                    onClick={() => setScanMode(null)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--slate-400)',
+                                        fontSize: '0.8125rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.5rem 0'
+                                    }}
+                                >
+                                    ← Change Mode
+                                </button>
+                            </div>
+                            <label
+                                className="upload-zone"
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.add('drag-over');
+                                }}
+                                onDragLeave={(e) => {
+                                    e.currentTarget.classList.remove('drag-over');
+                                }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.remove('drag-over');
+                                    const file = e.dataTransfer.files[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => handleImageUpload(file, reader.result);
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                            >
+                                <Icon name="upload" className="upload-zone-icon" />
+                                <div style={{
+                                    fontSize: '0.875rem',
+                                    color: 'var(--slate-400)',
+                                    marginBottom: '8px'
+                                }}>
+                                    Drag and drop MRI scan here, or click to browse
+                                </div>
+                                <div style={{
+                                    fontSize: '0.75rem',
+                                    color: 'var(--slate-500)',
+                                    fontFamily: 'var(--font-mono)'
+                                }}>
+                                    Supported: JPEG, PNG, DICOM
+                                </div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
+                        </MedicalCard>
+                    )}
+                </>
             ) : (
                 <>
                     {/* Analysis Status */}
@@ -150,10 +316,10 @@ export default function NeuroRadiology() {
                                     width: '12px',
                                     height: '12px',
                                     borderRadius: '50%',
-                                    background: 'var(--sky-500)'
+                                    background: scanMode === 'fast' ? 'var(--sky-500)' : 'var(--violet-500)'
                                 }} />
                                 <span style={{ color: 'var(--slate-400)', fontSize: '0.875rem' }}>
-                                    Analyzing brain MRI...
+                                    {scanMode === 'fast' ? 'Quick screening in progress...' : 'Running morphometric analysis...'}
                                 </span>
                             </div>
                             <LoadingBar />
@@ -163,6 +329,73 @@ export default function NeuroRadiology() {
                     {/* Results */}
                     {result && !analyzing && (
                         <div className="reveal">
+                            {/* Mode Badge */}
+                            <div style={{
+                                marginBottom: '1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem'
+                            }}>
+                                <span style={{
+                                    padding: '0.375rem 0.75rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    fontFamily: 'var(--font-mono)',
+                                    background: scanMode === 'fast'
+                                        ? 'linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(6, 182, 212, 0.15))'
+                                        : 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.15))',
+                                    color: scanMode === 'fast' ? 'var(--sky-400)' : 'var(--violet-400)',
+                                    border: `1px solid ${scanMode === 'fast' ? 'rgba(14, 165, 233, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`
+                                }}>
+                                    {result.mode || (scanMode === 'fast' ? 'RAPID SCREENING' : 'SURGICAL PLANNING')}
+                                </span>
+                                <span style={{
+                                    fontSize: '0.75rem',
+                                    color: 'var(--slate-500)',
+                                    fontFamily: 'var(--font-mono)'
+                                }}>
+                                    {result.temps_calcul || '~1s'}
+                                </span>
+                            </div>
+
+                            {/* Rotation Controls */}
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                marginBottom: '1rem'
+                            }}>
+                                <button
+                                    onClick={rotateLeft}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                                    title="Rotate Left"
+                                >
+                                    ↺ Rotate Left
+                                </button>
+                                <span style={{
+                                    padding: '0.5rem 1rem',
+                                    background: 'rgba(14, 165, 233, 0.1)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    fontFamily: 'var(--font-mono)',
+                                    fontSize: '0.75rem',
+                                    color: 'var(--sky-400)',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}>
+                                    {rotation}°
+                                </span>
+                                <button
+                                    onClick={rotateRight}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                                    title="Rotate Right"
+                                >
+                                    Rotate Right ↻
+                                </button>
+                            </div>
+
                             {/* Images Grid */}
                             <div className="grid-2" style={{ marginBottom: '1.5rem' }}>
                                 <MedicalCard title="Original MRI">
@@ -173,282 +406,389 @@ export default function NeuroRadiology() {
                                             width: '100%',
                                             height: 'auto',
                                             borderRadius: 'var(--radius-sm)',
-                                            border: '1px solid var(--slate-700)'
+                                            border: '1px solid var(--slate-700)',
+                                            transform: `rotate(${rotation}deg)`,
+                                            transition: 'transform 0.3s ease'
                                         }}
                                     />
                                 </MedicalCard>
 
-                                <MedicalCard title="AI Heatmap">
+                                <MedicalCard title={scanMode === 'precision' ? 'Annotated Analysis' : 'AI Heatmap'}>
                                     <img
-                                        src={heatmapImage}
-                                        alt="AI Heatmap"
+                                        src={scanMode === 'precision' && result.annotated_image ? result.annotated_image : heatmapImage}
+                                        alt="AI Analysis"
                                         style={{
                                             width: '100%',
                                             height: 'auto',
                                             borderRadius: 'var(--radius-sm)',
-                                            border: '1px solid var(--slate-700)'
+                                            border: '1px solid var(--slate-700)',
+                                            transform: `rotate(${rotation}deg)`,
+                                            transition: 'transform 0.3s ease'
                                         }}
                                     />
                                 </MedicalCard>
                             </div>
 
-                            {/* Diagnosis Card */}
-                            <MedicalCard className="reveal-delay-1">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1.5rem' }}>
-                                    <div>
-                                        <ResultBadge type={result.diagnosis?.toLowerCase().includes('tumor') ? 'danger' : 'success'}>
-                                            {result.diagnosis || 'Analysis Complete'}
-                                        </ResultBadge>
-                                    </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{
-                                            fontSize: '2.5rem',
-                                            fontWeight: 700,
-                                            fontFamily: 'var(--font-mono)',
-                                            color: result.confidence > 80 ? 'var(--emerald-500)' : 'var(--amber-500)',
-                                            lineHeight: 1
-                                        }}>
-                                            <CountUp
-                                                start={0}
-                                                end={result.confidence || 0}
-                                                duration={2}
-                                                decimals={1}
-                                                suffix="%"
-                                            />
+                            {/* ============ FAST MODE RESULTS ============ */}
+                            {scanMode === 'fast' && (
+                                <MedicalCard className="reveal-delay-1">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1.5rem' }}>
+                                        <div>
+                                            <ResultBadge type={result.diagnostic?.includes('Tumor') ? 'danger' : 'success'}>
+                                                {result.diagnostic || 'Analysis Complete'}
+                                            </ResultBadge>
                                         </div>
-                                        <div style={{
-                                            fontSize: '0.75rem',
-                                            color: 'var(--slate-400)',
-                                            marginTop: '4px',
-                                            fontFamily: 'var(--font-mono)'
-                                        }}>
-                                            Confidence
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{
+                                                fontSize: '2.5rem',
+                                                fontWeight: 700,
+                                                fontFamily: 'var(--font-mono)',
+                                                color: result.confidence > 70 ? 'var(--red-500)' : 'var(--emerald-500)',
+                                                lineHeight: 1
+                                            }}>
+                                                <CountUp
+                                                    start={0}
+                                                    end={result.confidence || 0}
+                                                    duration={2}
+                                                    decimals={1}
+                                                    suffix="%"
+                                                />
+                                            </div>
+                                            <div style={{
+                                                fontSize: '0.75rem',
+                                                color: 'var(--slate-400)',
+                                                marginTop: '4px',
+                                                fontFamily: 'var(--font-mono)'
+                                            }}>
+                                                Tumor Probability
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Confidence Meter */}
-                                <div className="confidence-meter" style={{ marginBottom: '1.5rem' }}>
-                                    <div
-                                        className={result.confidence > 80 ? 'confidence-fill-success' : 'confidence-fill-danger'}
-                                        style={{ width: `${result.confidence || 0}%` }}
-                                    />
-                                </div>
+                                    {/* Confidence Meter */}
+                                    <div className="confidence-meter" style={{ marginBottom: '1.5rem' }}>
+                                        <div
+                                            className={result.confidence <= 70 ? 'confidence-fill-success' : 'confidence-fill-danger'}
+                                            style={{ width: `${result.confidence || 0}%` }}
+                                        />
+                                    </div>
 
-                                {/* Diagnosis Text */}
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <h4 style={{
-                                        fontSize: '0.875rem',
-                                        fontWeight: 600,
-                                        color: 'var(--slate-300)',
-                                        marginBottom: '0.5rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em'
-                                    }}>
-                                        Analysis Results
-                                    </h4>
-                                    <p style={{ color: 'var(--slate-400)', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                                        {result.analysis || 'Model prediction completed successfully.'}
-                                    </p>
-                                </div>
-
-                                {/* Recommendation */}
-                                {result.recommendation && (
+                                    {/* Action Recommendation */}
                                     <div style={{
-                                        padding: '12px',
-                                        background: 'rgba(14, 165, 233, 0.1)',
+                                        padding: '1rem',
+                                        background: result.threshold_met
+                                            ? 'rgba(239, 68, 68, 0.1)'
+                                            : 'rgba(16, 185, 129, 0.1)',
                                         borderRadius: 'var(--radius-sm)',
-                                        border: '1px solid rgba(14, 165, 233, 0.2)'
+                                        border: `1px solid ${result.threshold_met ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
                                     }}>
                                         <h4 style={{
                                             fontSize: '0.75rem',
                                             fontWeight: 600,
-                                            color: 'var(--sky-500)',
+                                            color: result.threshold_met ? 'var(--red-400)' : 'var(--emerald-400)',
                                             marginBottom: '4px',
                                             textTransform: 'uppercase'
                                         }}>
-                                            Recommendation
+                                            Recommended Action
                                         </h4>
                                         <p style={{ fontSize: '0.875rem', color: 'var(--slate-300)' }}>
-                                            {result.recommendation}
+                                            {result.action || (result.threshold_met
+                                                ? 'Switch to Precision mode for detailed measurements.'
+                                                : 'No further action required.')}
                                         </p>
                                     </div>
-                                )}
 
-                                {/* Actions */}
-                                <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <button
-                                        onClick={() => setShowDetails(!showDetails)}
-                                        className="btn btn-secondary"
-                                        style={{ width: '100%' }}
-                                    >
-                                        <Icon name="document" className="w-4 h-4" />
-                                        {showDetails ? 'Hide Details' : 'More Details'}
-                                    </button>
-
-                                    {/* Detailed Explanation Panel */}
-                                    {showDetails && (
-                                        <div className="fade-in" style={{
-                                            padding: '1.5rem',
-                                            background: 'rgba(15, 23, 42, 0.5)',
-                                            borderRadius: 'var(--radius-md)',
-                                            border: '1px solid var(--slate-700)'
-                                        }}>
-                                            <h4 style={{
-                                                fontSize: '1rem',
-                                                fontWeight: 600,
-                                                color: 'var(--sky-400)',
-                                                marginBottom: '1rem'
-                                            }}>
-                                                AI Analysis Breakdown
-                                            </h4>
-
-                                            {/* Model Architecture */}
-                                            <div style={{ marginBottom: '1.5rem' }}>
-                                                <h5 style={{
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: 600,
-                                                    color: 'var(--slate-200)',
-                                                    marginBottom: '0.5rem'
-                                                }}>
-                                                    Neural Network Architecture
-                                                </h5>
-                                                <p style={{
-                                                    fontSize: '0.8125rem',
-                                                    color: 'var(--slate-400)',
-                                                    lineHeight: '1.6',
-                                                    fontFamily: 'var(--font-mono)'
-                                                }}>
-                                                    Model: <span style={{ color: 'var(--sky-400)' }}>ResNet50</span> (Residual Neural Network, 50 layers)<br />
-                                                    Input: 224×224×3 RGB MRI scan<br />
-                                                    Classes: Binary (Healthy=0, Tumor=1)<br />
-                                                    Activation: Softmax (probabilities)<br />
-                                                    Probabilities: Healthy {((1 - result.confidence / 100) * 100).toFixed(1)}% | Tumor {result.confidence}%
-                                                </p>
-                                            </div>
-
-                                            {/* Detection Methodology */}
-                                            <div style={{ marginBottom: '1.5rem' }}>
-                                                <h5 style={{
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: 600,
-                                                    color: 'var(--slate-200)',
-                                                    marginBottom: '0.5rem'
-                                                }}>
-                                                    Detection Methodology
-                                                </h5>
-                                                <p style={{
-                                                    fontSize: '0.8125rem',
-                                                    color: 'var(--slate-400)',
-                                                    lineHeight: '1.6'
-                                                }}>
-                                                    The model analyzes MRI scans using deep convolutional layers to extract hierarchical features:
-                                                </p>
-                                                <ul style={{
-                                                    fontSize: '0.8125rem',
-                                                    color: 'var(--slate-400)',
-                                                    lineHeight: '1.8',
-                                                    marginTop: '0.5rem',
-                                                    paddingLeft: '1.5rem'
-                                                }}>
-                                                    <li><strong>Low-level features:</strong> Edges, textures, intensity gradients</li>
-                                                    <li><strong>Mid-level features:</strong> Tissue patterns, anatomical structures</li>
-                                                    <li><strong>High-level features:</strong> Tumor-specific morphology, location patterns</li>
-                                                </ul>
-                                            </div>
-
-                                            {/* Heatmap Explanation */}
-                                            <div style={{ marginBottom: '1.5rem' }}>
-                                                <h5 style={{
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: 600,
-                                                    color: 'var(--slate-200)',
-                                                    marginBottom: '0.5rem'
-                                                }}>
-                                                    Segmentation Heatmap
-                                                </h5>
-                                                <p style={{
-                                                    fontSize: '0.8125rem',
-                                                    color: 'var(--slate-400)',
-                                                    lineHeight: '1.6'
-                                                }}>
-                                                    The red overlay shows <strong>intensity-based segmentation</strong> of hyper-intense regions:
-                                                </p>
-                                                <ul style={{
-                                                    fontSize: '0.8125rem',
-                                                    color: 'var(--slate-400)',
-                                                    lineHeight: '1.8',
-                                                    marginTop: '0.5rem',
-                                                    paddingLeft: '1.5rem'
-                                                }}>
-                                                    <li><strong>CLAHE Enhancement:</strong> Adaptive histogram equalization for contrast</li>
-                                                    <li><strong>Threshold: 70%</strong> of maximum pixel intensity</li>
-                                                    <li><strong>Morphological filtering:</strong> Noise removal, region smoothing</li>
-                                                    <li><strong>Gaussian blur (σ=41):</strong> Creates diffuse visualization</li>
-                                                    <li><strong>Colormap:</strong> Jet (Blue=low, Red=high activation)</li>
-                                                </ul>
-                                                <p style={{
-                                                    fontSize: '0.8125rem',
-                                                    color: 'var(--amber-400)',
-                                                    lineHeight: '1.6',
-                                                    marginTop: '0.75rem',
-                                                    fontStyle: 'italic'
-                                                }}>
-                                                    Note: In T2-weighted MRI, tumors typically appear hyper-intense (bright). The heatmap highlights these regions for clinical review.
-                                                </p>
-                                            </div>
-
-                                            {/* Clinical Context */}
-                                            <div>
-                                                <h5 style={{
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: 600,
-                                                    color: 'var(--slate-200)',
-                                                    marginBottom: '0.5rem'
-                                                }}>
-                                                    Clinical Interpretation
-                                                </h5>
-                                                <p style={{
-                                                    fontSize: '0.8125rem',
-                                                    color: 'var(--slate-400)',
-                                                    lineHeight: '1.6'
-                                                }}>
-                                                    {result.confidence >= 70 ? (
-                                                        <>
-                                                            <strong style={{ color: 'var(--red-400)' }}>High confidence detection ({result.confidence}%)</strong> indicates significant probability of tumor presence.
-                                                            The model identified abnormal tissue patterns consistent with neoplastic growth.
-                                                            Immediate consultation with a neurosurgeon is recommended for biopsy confirmation and treatment planning.
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <strong style={{ color: 'var(--emerald-400)' }}>Low tumor probability ({result.confidence}%)</strong> suggests healthy brain tissue.
-                                                            The model found no significant abnormalities in tissue density, structure, or morphology.
-                                                            Regular monitoring and follow-up scans are advised as per standard protocols.
-                                                        </>
-                                                    )}
-                                                </p>
-                                                <p style={{
-                                                    fontSize: '0.75rem',
-                                                    color: 'var(--slate-500)',
-                                                    lineHeight: '1.6',
-                                                    marginTop: '1rem',
-                                                    padding: '0.75rem',
-                                                    background: 'rgba(251, 191, 36, 0.1)',
-                                                    borderLeft: '3px solid var(--amber-500)',
-                                                    borderRadius: '4px'
-                                                }}>
-                                                    ⚠️ <strong>Disclaimer:</strong> This AI analysis is a diagnostic aid only and must not replace professional medical judgment.
-                                                    All findings require confirmation by qualified radiologists and clinical correlation.
-                                                </p>
-                                            </div>
-                                        </div>
+                                    {/* Switch to Precision Mode Button */}
+                                    {result.threshold_met && (
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                setScanMode('precision');
+                                                setResult(null);
+                                                setAnalyzing(true);
+                                                // Re-trigger analysis with precision mode
+                                                const file = document.querySelector('input[type="file"]')?.files?.[0];
+                                                if (file) {
+                                                    const formData = new FormData();
+                                                    formData.append('file', file);
+                                                    axios.post('/api/scan/neuro?mode=precision', formData, {
+                                                        headers: { 'Content-Type': 'multipart/form-data' }
+                                                    }).then(response => {
+                                                        setResult(response.data);
+                                                        setHeatmapImage(response.data.heatmap || uploadedImage);
+                                                        setAnalyzing(false);
+                                                    }).catch(() => setAnalyzing(false));
+                                                }
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                marginTop: '1rem',
+                                                background: 'linear-gradient(135deg, var(--violet-600), var(--purple-600))'
+                                            }}
+                                        >
+                                            📐 Run Precision Analysis
+                                        </button>
                                     )}
 
-                                    <button className="btn btn-secondary" onClick={resetScan} style={{ width: '100%', marginTop: '0.5rem' }}>
+                                    <button className="btn btn-secondary" onClick={resetScan} style={{ width: '100%', marginTop: '0.75rem' }}>
                                         New Scan
                                     </button>
-                                </div>
-                            </MedicalCard>
+                                </MedicalCard>
+                            )}
+
+                            {/* ============ PRECISION MODE RESULTS ============ */}
+                            {scanMode === 'precision' && (
+                                <>
+                                    {/* Morphometric Measurements */}
+                                    {result.data && (
+                                        <MedicalCard title="Morphometric Measurements" className="reveal-delay-1">
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                                gap: '1rem',
+                                                marginBottom: '1.5rem'
+                                            }}>
+                                                <div style={{
+                                                    padding: '1rem',
+                                                    background: 'rgba(139, 92, 246, 0.1)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: '1.5rem',
+                                                        fontWeight: 700,
+                                                        color: 'var(--violet-400)',
+                                                        fontFamily: 'var(--font-mono)'
+                                                    }}>
+                                                        {result.data.surface_cm2 || '—'}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>
+                                                        Surface (cm²)
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    padding: '1rem',
+                                                    background: 'rgba(139, 92, 246, 0.1)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: '1.5rem',
+                                                        fontWeight: 700,
+                                                        color: 'var(--violet-400)',
+                                                        fontFamily: 'var(--font-mono)'
+                                                    }}>
+                                                        {result.data.diametre_mm || '—'}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>
+                                                        Diameter (mm)
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    padding: '1rem',
+                                                    background: 'rgba(139, 92, 246, 0.1)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: '1.5rem',
+                                                        fontWeight: 700,
+                                                        color: 'var(--violet-400)',
+                                                        fontFamily: 'var(--font-mono)'
+                                                    }}>
+                                                        {result.data.volume_cm3 || '—'}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>
+                                                        Volume (cm³)
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Additional Metrics */}
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: '1fr 1fr',
+                                                gap: '0.75rem',
+                                                padding: '1rem',
+                                                background: 'rgba(15, 23, 42, 0.5)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                fontSize: '0.8125rem'
+                                            }}>
+                                                <div>
+                                                    <span style={{ color: 'var(--slate-500)' }}>Location: </span>
+                                                    <span style={{ color: 'var(--slate-300)' }}>{result.data.localisation || 'N/A'}</span>
+                                                </div>
+                                                <div>
+                                                    <span style={{ color: 'var(--slate-500)' }}>Min. Margin: </span>
+                                                    <span style={{ color: 'var(--slate-300)' }}>{result.data.marge_min_mm || '—'} mm</span>
+                                                </div>
+                                                {result.data.dimensions_mm && (
+                                                    <>
+                                                        <div>
+                                                            <span style={{ color: 'var(--slate-500)' }}>Width: </span>
+                                                            <span style={{ color: 'var(--slate-300)' }}>{result.data.dimensions_mm.largeur} mm</span>
+                                                        </div>
+                                                        <div>
+                                                            <span style={{ color: 'var(--slate-500)' }}>Height: </span>
+                                                            <span style={{ color: 'var(--slate-300)' }}>{result.data.dimensions_mm.hauteur} mm</span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </MedicalCard>
+                                    )}
+
+                                    {/* Risk Assessment */}
+                                    {result.risk && (
+                                        <MedicalCard title="Risk Assessment" className="reveal-delay-2" style={{ marginTop: '1rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                                <div style={{
+                                                    padding: '0.75rem 1.5rem',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    background: result.risk.level === 'HIGH'
+                                                        ? 'rgba(239, 68, 68, 0.2)'
+                                                        : result.risk.level === 'MODERATE'
+                                                            ? 'rgba(245, 158, 11, 0.2)'
+                                                            : 'rgba(16, 185, 129, 0.2)',
+                                                    border: `2px solid ${result.risk.level === 'HIGH'
+                                                        ? 'var(--red-500)'
+                                                        : result.risk.level === 'MODERATE'
+                                                            ? 'var(--amber-500)'
+                                                            : 'var(--emerald-500)'
+                                                        }`
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: '1.25rem',
+                                                        fontWeight: 700,
+                                                        color: result.risk.level === 'HIGH'
+                                                            ? 'var(--red-400)'
+                                                            : result.risk.level === 'MODERATE'
+                                                                ? 'var(--amber-400)'
+                                                                : 'var(--emerald-400)'
+                                                    }}>
+                                                        {result.risk.level}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--slate-400)' }}>
+                                                        Score: {result.risk.score}/100
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: 600,
+                                                    color: 'var(--slate-300)'
+                                                }}>
+                                                    {result.risk.priority}
+                                                </div>
+                                            </div>
+
+                                            {/* Risk Factors */}
+                                            {result.risk.factors && result.risk.factors.length > 0 && (
+                                                <div style={{ marginTop: '1rem' }}>
+                                                    <h5 style={{
+                                                        fontSize: '0.75rem',
+                                                        color: 'var(--slate-500)',
+                                                        marginBottom: '0.5rem',
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        Contributing Factors
+                                                    </h5>
+                                                    <ul style={{
+                                                        listStyle: 'none',
+                                                        padding: 0,
+                                                        margin: 0,
+                                                        display: 'flex',
+                                                        flexWrap: 'wrap',
+                                                        gap: '0.5rem'
+                                                    }}>
+                                                        {result.risk.factors.map((factor, i) => (
+                                                            <li key={i} style={{
+                                                                padding: '0.375rem 0.75rem',
+                                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                                borderRadius: 'var(--radius-sm)',
+                                                                fontSize: '0.8125rem',
+                                                                color: 'var(--red-300)'
+                                                            }}>
+                                                                {factor}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </MedicalCard>
+                                    )}
+
+                                    {/* Recommendations */}
+                                    {result.recommendations && result.recommendations.length > 0 && (
+                                        <MedicalCard title="Clinical Recommendations" className="reveal-delay-3" style={{ marginTop: '1rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {result.recommendations.map((rec, i) => (
+                                                    <div key={i} style={{
+                                                        padding: '1rem',
+                                                        background: 'rgba(139, 92, 246, 0.05)',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        borderLeft: '3px solid var(--violet-500)',
+                                                        display: 'grid',
+                                                        gridTemplateColumns: '1fr auto',
+                                                        gap: '1rem',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                        <div>
+                                                            <div style={{ fontWeight: 600, color: 'var(--slate-200)', marginBottom: '0.25rem' }}>
+                                                                {rec.action}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.8125rem', color: 'var(--slate-500)' }}>
+                                                                {rec.raison}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{
+                                                            padding: '0.375rem 0.75rem',
+                                                            background: 'rgba(139, 92, 246, 0.15)',
+                                                            borderRadius: 'var(--radius-sm)',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 600,
+                                                            color: 'var(--violet-400)'
+                                                        }}>
+                                                            {rec.delai}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </MedicalCard>
+                                    )}
+
+                                    {/* Binary Mask Image */}
+                                    {result.image_masque && (
+                                        <MedicalCard title="Segmentation Mask" className="reveal-delay-4" style={{ marginTop: '1rem' }}>
+                                            <img
+                                                src={result.image_masque}
+                                                alt="Binary Mask"
+                                                style={{
+                                                    width: '100%',
+                                                    maxWidth: '300px',
+                                                    height: 'auto',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    border: '1px solid var(--slate-700)',
+                                                    filter: 'invert(1)',
+                                                    margin: '0 auto',
+                                                    display: 'block'
+                                                }}
+                                            />
+                                            <p style={{
+                                                textAlign: 'center',
+                                                fontSize: '0.75rem',
+                                                color: 'var(--slate-500)',
+                                                marginTop: '0.75rem'
+                                            }}>
+                                                Binary mask showing detected lesion boundaries
+                                            </p>
+                                        </MedicalCard>
+                                    )}
+
+                                    <button className="btn btn-secondary" onClick={resetScan} style={{ width: '100%', marginTop: '1.5rem' }}>
+                                        New Scan
+                                    </button>
+                                </>
+                            )}
                         </div>
                     )}
                 </>

@@ -140,7 +140,7 @@ export default function Pharmacy() {
                     color: 'var(--slate-400)',
                     fontFamily: 'var(--font-mono)'
                 }}>
-                    OCR + API Gouv.fr | Recherche Manuelle | Temps Réel
+                    OCR + ORB Anti-Contrefaçon | API Gouv.fr | Temps Réel
                 </p>
             </div>
 
@@ -376,6 +376,89 @@ export default function Pharmacy() {
                                         ))}
                                     </ul>
                                 </div>
+
+                                {/* Authenticity Verification (ORB Feature Matching) */}
+                                {result.authenticity && (
+                                    <div style={{
+                                        padding: '14px',
+                                        background: result.authenticity.status === 'VERIFIED'
+                                            ? 'rgba(16, 185, 129, 0.1)'
+                                            : result.authenticity.status === 'SUSPICIOUS'
+                                                ? 'rgba(239, 68, 68, 0.1)'
+                                                : 'rgba(251, 191, 36, 0.1)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: `2px solid ${result.authenticity.status === 'VERIFIED'
+                                            ? 'var(--emerald-500)'
+                                            : result.authenticity.status === 'SUSPICIOUS'
+                                                ? 'var(--red-500)'
+                                                : 'var(--amber-500)'
+                                            }`,
+                                        marginBottom: '1.5rem'
+                                    }}>
+                                        <h4 style={{
+                                            fontSize: '0.8rem', fontWeight: 700,
+                                            color: result.authenticity.status === 'VERIFIED'
+                                                ? 'var(--emerald-500)'
+                                                : result.authenticity.status === 'SUSPICIOUS'
+                                                    ? 'var(--red-500)'
+                                                    : 'var(--amber-500)',
+                                            marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em'
+                                        }}>
+                                            🔐 VÉRIFICATION ANTI-CONTREFAÇON (ORB)
+                                        </h4>
+
+                                        <p style={{
+                                            fontSize: '0.95rem',
+                                            color: 'var(--slate-200)',
+                                            marginBottom: '10px',
+                                            fontWeight: 500
+                                        }}>
+                                            {result.authenticity.message}
+                                        </p>
+
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: '1rem',
+                                            flexWrap: 'wrap',
+                                            marginBottom: result.authenticity.visual_proof ? '1rem' : 0
+                                        }}>
+                                            <span style={{
+                                                padding: '4px 10px',
+                                                background: 'rgba(0,0,0,0.2)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                fontSize: '0.75rem',
+                                                fontFamily: 'var(--font-mono)',
+                                                color: 'var(--slate-300)'
+                                            }}>
+                                                Matches: {result.authenticity.matches}
+                                            </span>
+                                            {result.authenticity.confidence > 0 && (
+                                                <span style={{
+                                                    padding: '4px 10px',
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    fontSize: '0.75rem',
+                                                    fontFamily: 'var(--font-mono)',
+                                                    color: 'var(--slate-300)'
+                                                }}>
+                                                    Confiance: {result.authenticity.confidence}%
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {result.authenticity.visual_proof && (
+                                            <img
+                                                src={result.authenticity.visual_proof}
+                                                alt="Feature Matching Visualization"
+                                                style={{
+                                                    width: '100%',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    border: '1px solid var(--slate-600)'
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                )}
 
                                 <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
                                     <a href={result.info_web.source} target="_blank" rel="noopener noreferrer" style={{
