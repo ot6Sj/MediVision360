@@ -16,7 +16,7 @@ export const API_URL = "https://ot6jj-medivision-backend.hf.space";
 function Dashboard() {
     return (
         <div style={{ padding: '0', maxWidth: '100%', margin: '0 auto', overflowX: 'hidden' }}>
-            {/* HER0 SECTION */}
+            {/* HERO SECTION */}
             <div className="fade-in" style={{
                 background: 'linear-gradient(135deg, var(--sky-500) 0%, var(--sky-700) 100%)',
                 padding: '4rem 2rem 8rem 2rem', // Extra bottom padding for overlap
@@ -136,7 +136,7 @@ function App() {
     const renderPage = () => {
         switch (currentPage) {
             case 'neuro':
-                // On passe l'URL de l'API en 'prop' pour que le composant puisse l'utiliser
+                // Passage de la prop apiUrl pour connecter au backend
                 return <NeuroRadiology apiUrl={API_URL} />;
             case 'derma':
                 return <Dermatology apiUrl={API_URL} />;
