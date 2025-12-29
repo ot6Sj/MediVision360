@@ -1,333 +1,198 @@
 /* Copyright (c) 2025 ot6_j. All Rights Reserved. */
 
-import { useState } from 'react';
-import Sidebar from './components/Sidebar';
-import NeuroRadiology from './components/departments/NeuroRadiology';
-import Dermatology from './components/departments/Dermatology';
-import Pharmacy from './components/departments/Pharmacy';
-import Surgery from './components/departments/Surgery';
-import Icon from './components/Icon';
-import CountUp from 'react-countup';
+import React, { useState, useEffect } from 'react';
 
-// --- HUGGING FACE API CONFIGURATION ---
-// TODO: Add VITE_HF_API_TOKEN to your .env file
-const HF_API_TOKEN = import.meta.env.VITE_HF_API_TOKEN || "YOUR_HF_TOKEN_HERE";
+// --- 1. CONFIGURATION API (BACKEND) ---
+// C'est ici que l'on connecte le Frontend au Cerveau (Hugging Face)
+export const API_URL = "https://ot6jj-medivision-backend.hf.space";
 
-const HF_MODELS = {
-    // Neuro: ResNet50 for MRI/Brain scan classification
-    neuro: "microsoft/resnet-50",
-    // Derma: MobileNetV2 for skin lesion analysis
-    derma: "google/mobilenet_v2_1.0_224",
-    // Surgery: DETR (End-to-End Object Detection) to monitor surgical tools
-    surgery: "facebook/detr-resnet-50",
-    // Pharma: Vision Transformer for pill/medication identification
-    pharmacy: "google/vit-base-patch16-224"
+// --- 2. COMPOSANTS UTILITAIRES (Pour remplacer les imports manquants) ---
+
+// Remplacement de 'react-countup' pour éviter l'erreur de dépendance
+const CountUp = ({ end, duration = 2, decimals = 0, suffix = "" }) => {
+    const [count, setCount] = useState(0);
+    useEffect(() => {
+        let startTime;
+        let animationFrame;
+        const animate = (timestamp) => {
+            if (!startTime) startTime = timestamp;
+            const progress = timestamp - startTime;
+            const percentage = Math.min(progress / (duration * 1000), 1);
+            const ease = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
+            setCount(end * ease);
+            if (percentage < 1) animationFrame = requestAnimationFrame(animate);
+        };
+        animationFrame = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(animationFrame);
+    }, [end, duration]);
+    return <span>{count.toFixed(decimals)}{suffix}</span>;
 };
 
-/**
- * Generic function to query Hugging Face Inference API
- * @param {string} modelKey - The key from HF_MODELS
- * @param {Blob|File} imageFile - The image data to analyze
- */
-async function queryHuggingFace(modelKey, imageFile) {
-    if (!HF_API_TOKEN || HF_API_TOKEN === "YOUR_HF_TOKEN_HERE") {
-        console.warn("Hugging Face API Token is missing!");
-    }
+// Remplacement de './components/Icon'
+const Icon = ({ name, className = "w-6 h-6" }) => {
+    const icons = {
+        brain: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>,
+        dna: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>,
+        pill: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 13.5L13.5 10.5M16.5 16.5L19.5 13.5M7.5 7.5L4.5 10.5M10.5 4.5L13.5 7.5M16.5 4.5L19.5 7.5M4.5 16.5L7.5 13.5M12 12L12 12" /></svg>,
+        surgery: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>,
+        upload: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>,
+        dashboard: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+    };
+    return icons[name] || null;
+};
 
-    try {
-        const response = await fetch(
-            `https://api-inference.huggingface.co/models/${HF_MODELS[modelKey]}`,
-            {
-                headers: { 
-                    Authorization: `Bearer ${HF_API_TOKEN}`,
-                    "Content-Type": "application/octet-stream" 
-                },
-                method: "POST",
-                body: imageFile,
-            }
-        );
+// --- 3. COMPOSANTS MÉTIER (Pages des Départements) ---
+// Notez l'utilisation de la prop `apiUrl` pour les appels backend
 
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
-        }
-        
-        return await response.json();
-    } catch (error) {
-        console.error("Hugging Face Inference Failed:", error);
-        throw error;
-    }
-}
+const NeuroRadiology = ({ apiUrl }) => (
+    <div style={{ padding: '2rem' }}>
+        <h2 style={{ fontSize: '1.875rem', fontWeight: '700', color: 'white', marginBottom: '1.5rem' }}>🧠 Neuro-Radiologie</h2>
+        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ marginBottom: '1.5rem', display: 'inline-flex', padding: '1rem', backgroundColor: '#0f172a', borderRadius: '9999px', color: '#64748b' }}>
+                <Icon name="upload" className="w-8 h-8" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '500', color: 'white', marginBottom: '0.5rem' }}>Charger une IRM Cérébrale</h3>
+            <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>Glissez votre fichier DICOM ou JPG ici pour l'analyse ResNet50.</p>
+            <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#06b6d4', backgroundColor: 'rgba(8, 51, 68, 0.5)', padding: '0.5rem 1rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                Target API: {apiUrl}/predict/neuro
+            </p>
+        </div>
+    </div>
+);
 
-function Dashboard() {
+const Dermatology = ({ apiUrl }) => (
+    <div style={{ padding: '2rem' }}>
+        <h2 style={{ fontSize: '1.875rem', fontWeight: '700', color: 'white', marginBottom: '1.5rem' }}>🧬 Dermatologie</h2>
+        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ marginBottom: '1.5rem', display: 'inline-flex', padding: '1rem', backgroundColor: '#0f172a', borderRadius: '9999px', color: '#64748b' }}>
+                <Icon name="upload" className="w-8 h-8" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '500', color: 'white', marginBottom: '0.5rem' }}>Analyser une lésion</h3>
+            <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>Détection multi-modale (Cancer, Brûlure) via CLIP.</p>
+            <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#10b981', backgroundColor: 'rgba(2, 44, 34, 0.5)', padding: '0.5rem 1rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                Target API: {apiUrl}/predict/derma
+            </p>
+        </div>
+    </div>
+);
+
+const Surgery = ({ apiUrl }) => (
+    <div style={{ padding: '2rem' }}>
+        <h2 style={{ fontSize: '1.875rem', fontWeight: '700', color: 'white', marginBottom: '1.5rem' }}>🤖 Chirurgie</h2>
+        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ marginBottom: '1.5rem', display: 'inline-flex', padding: '1rem', backgroundColor: '#0f172a', borderRadius: '9999px', color: '#64748b' }}>
+                <Icon name="upload" className="w-8 h-8" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '500', color: 'white', marginBottom: '0.5rem' }}>Monitoring Vidéo</h3>
+            <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>Flux vidéo temps réel pour détection d'instruments.</p>
+            <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#f59e0b', backgroundColor: 'rgba(69, 26, 3, 0.5)', padding: '0.5rem 1rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                Target API: {apiUrl}/predict/surgery
+            </p>
+        </div>
+    </div>
+);
+
+const Pharmacy = ({ apiUrl }) => (
+    <div style={{ padding: '2rem' }}>
+        <h2 style={{ fontSize: '1.875rem', fontWeight: '700', color: 'white', marginBottom: '1.5rem' }}>💊 Pharmacie</h2>
+        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ marginBottom: '1.5rem', display: 'inline-flex', padding: '1rem', backgroundColor: '#0f172a', borderRadius: '9999px', color: '#64748b' }}>
+                <Icon name="upload" className="w-8 h-8" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '500', color: 'white', marginBottom: '0.5rem' }}>Scan Médicament</h3>
+            <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>Reconnaissance par Code-Barres ou OCR + API Gouv.</p>
+            <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#8b5cf6', backgroundColor: 'rgba(46, 16, 101, 0.5)', padding: '0.5rem 1rem', borderRadius: '0.25rem', display: 'inline-block' }}>
+                Target API: {apiUrl}/predict/pharma
+            </p>
+        </div>
+    </div>
+);
+
+// --- 4. COMPOSANT SIDEBAR ---
+const Sidebar = ({ activePage, onNavigate }) => {
+    const menuItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+        { id: 'neuro', label: 'Neuro-Radio', icon: 'brain' },
+        { id: 'derma', label: 'Dermatologie', icon: 'dna' },
+        { id: 'surgery', label: 'Chirurgie', icon: 'surgery' },
+        { id: 'pharma', label: 'Pharmacie', icon: 'pill' },
+    ];
+
+    return (
+        <div style={{ width: '280px', height: '100vh', position: 'fixed', left: 0, top: 0, backgroundColor: '#0f172a', borderRight: '1px solid #334155', display: 'flex', flexDirection: 'column', zIndex: 50 }}>
+            <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', borderRadius: '8px' }}></div>
+                <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', letterSpacing: '-0.025em' }}>MediVision<span style={{ color: '#06b6d4' }}>360</span></h1>
+            </div>
+            <nav style={{ flex: 1, padding: '0 1rem' }}>
+                {menuItems.map((item) => (
+                    <button key={item.id} onClick={() => onNavigate(item.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', marginBottom: '0.5rem', borderRadius: '12px', transition: 'all 0.2s', backgroundColor: activePage === item.id ? 'rgba(6, 182, 212, 0.1)' : 'transparent', color: activePage === item.id ? '#06b6d4' : '#94a3b8', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.95rem', fontWeight: activePage === item.id ? '600' : '500' }}>
+                        <Icon name={item.icon} className={activePage === item.id ? "w-5 h-5 text-cyan-400" : "w-5 h-5"} />
+                        {item.label}
+                    </button>
+                ))}
+            </nav>
+        </div>
+    );
+};
+
+// --- 5. COMPOSANT DASHBOARD (Accueil) ---
+const Dashboard = ({ onNavigate }) => {
     return (
         <div style={{ padding: '0', maxWidth: '100%', margin: '0 auto', overflowX: 'hidden' }}>
-            {/* HER0 SECTION */}
-            <div className="fade-in" style={{
-                background: 'linear-gradient(135deg, var(--sky-500) 0%, var(--sky-700) 100%)',
-                padding: '4rem 2rem 8rem 2rem', // Extra bottom padding for overlap
-                borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
-                color: 'white',
-                marginBottom: '-4rem', // Negative margin for card overlap
-                position: 'relative',
-                zIndex: 1
-            }}>
+            <div className="fade-in" style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)', padding: '4rem 2rem 8rem 2rem', borderRadius: '0 0 24px 24px', color: 'white', marginBottom: '-4rem', position: 'relative', zIndex: 1 }}>
                 <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ maxWidth: '600px' }}>
-                        <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            background: 'rgba(255, 255, 255, 0.2)',
-                            padding: '6px 16px',
-                            borderRadius: '9999px',
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            marginBottom: '1.5rem',
-                            backdropFilter: 'blur(4px)'
-                        }}>
-                            <Icon name="activity" className="w-4 h-4" />
-                            All Systems Operational
-                        </div>
-                        <h1 style={{
-                            fontSize: '3.5rem',
-                            fontWeight: 800,
-                            lineHeight: 1.1,
-                            marginBottom: '1.5rem',
-                            letterSpacing: '-0.02em'
-                        }}>
-                            MediVision 360 <br />
-                            <span style={{ opacity: 0.9 }}>Advanced Medical AI Platform</span>
-                        </h1>
-                        <p style={{
-                            fontSize: '1.125rem',
-                            lineHeight: 1.6,
-                            opacity: 0.9,
-                            marginBottom: '2rem',
-                            maxWidth: '500px'
-                        }}>
-                            Powered by Hugging Face Inference APIs: ResNet50, DETR, and Vision Transformers for real-time medical image analysis across Neuro-Radiology, Dermatology, and Surgical monitoring.
-                        </p>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn" style={{
-                                background: 'white',
-                                color: 'var(--sky-600)',
-                                padding: '12px 24px',
-                                fontSize: '1rem'
-                            }}>
-                                View Analysis Modules
-                            </button>
-                            <button className="btn" style={{
-                                background: 'rgba(255,255,255,0.1)',
-                                color: 'white',
-                                border: '1px solid rgba(255,255,255,0.3)',
-                                padding: '12px 24px',
-                                fontSize: '1rem'
-                            }}>
-                                Documentation
-                            </button>
-                        </div>
+                        <h1 style={{ fontSize: '3.5rem', fontWeight: '800', lineHeight: '1.1', marginBottom: '1.5rem', letterSpacing: '-0.02em', textShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>MediVision <span style={{ color: '#bae6fd' }}>360</span></h1>
+                        <p style={{ fontSize: '1.1rem', color: '#e0f2fe', lineHeight: '1.6', marginBottom: '2rem', maxWidth: '90%' }}>Plateforme d'analyse médicale unifiée assistée par IA.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '2rem', backgroundColor: 'rgba(255,255,255,0.1)', padding: '24px', borderRadius: '24px', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div><div style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.8 }}>Analyses</div><div style={{ fontSize: '2.5rem', fontWeight: '800' }}><CountUp end={1284} duration={2.5} /></div></div>
+                        <div style={{ width: '1px', backgroundColor: 'rgba(255,255,255,0.2)' }}></div>
+                        <div><div style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.8 }}>Précision</div><div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#86efac' }}><CountUp end={98.5} decimals={1} suffix="%" duration={3} /></div></div>
                     </div>
                 </div>
             </div>
-
-            {/* LIVE STATS CARDS (Overlapping) */}
-            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem', position: 'relative', zIndex: 10 }}>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                    gap: '1.5rem',
-                    marginBottom: '4rem'
-                }}>
-                    {/* Card 1: Neuro-Radiology Status */}
-                    <div className="medical-card reveal-delay-1" style={{ borderTop: '4px solid var(--sky-500)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <div style={{
-                                width: '40px', height: '40px',
-                                background: 'rgba(14, 165, 233, 0.1)',
-                                borderRadius: '8px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'var(--sky-500)'
-                            }}>
-                                <Icon name="brain" className="w-6 h-6" />
-                            </div>
-                            <span className="badge badge-success">Active</span>
+            
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem', position: 'relative', zIndex: 2 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '4rem' }}>
+                    {[
+                        { id: 'neuro', title: 'Neuro-Radiologie', desc: 'ResNet50 & U-Net.', icon: 'brain', color: '#0ea5e9' },
+                        { id: 'derma', title: 'Dermatologie', desc: 'Analyse de lésions via CLIP.', icon: 'dna', color: '#10b981' },
+                        { id: 'surgery', title: 'Chirurgie', desc: 'Monitoring vidéo temps réel.', icon: 'surgery', color: '#f59e0b' },
+                        { id: 'pharma', title: 'Pharmacie', desc: 'Scan Code-Barres & OCR.', icon: 'pill', color: '#8b5cf6' },
+                    ].map((feature, idx) => (
+                        <div key={idx} onClick={() => onNavigate(feature.id)} style={{ padding: '2rem', borderRadius: '24px', background: '#1e293b', border: '1px solid #334155', cursor: 'pointer', transition: 'transform 0.2s ease' }} className="hover:scale-105">
+                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: `${feature.color}20`, color: feature.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}><Icon name={feature.icon} className="w-8 h-8" /></div>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '0.75rem', color: '#f1f5f9' }}>{feature.title}</h3>
+                            <p style={{ color: '#94a3b8', lineHeight: '1.6' }}>{feature.desc}</p>
                         </div>
-                        <h3 className="medical-card-title">NeuroRadiology</h3>
-                        <p className="medical-card-subtitle">ResNet50 Brain Tumor Detection</p>
-                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--slate-700)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                                <span style={{ color: 'var(--slate-400)' }}>Model</span>
-                                <span style={{ fontWeight: 600, color: 'var(--slate-50)' }}>microsoft/resnet-50</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 2: Total Scans */}
-                    <div className="medical-card reveal-delay-2" style={{ borderTop: '4px solid var(--emerald-500)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <div style={{
-                                width: '40px', height: '40px',
-                                background: 'rgba(16, 185, 129, 0.1)',
-                                borderRadius: '8px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'var(--emerald-500)'
-                            }}>
-                                <Icon name="dna" className="w-6 h-6" />
-                            </div>
-                            <span className="badge badge-success">Active</span>
-                        </div>
-                        <h3 className="medical-card-title">Dermatology</h3>
-                        <p className="medical-card-subtitle">MobileNetV2 Skin Analysis</p>
-                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--slate-700)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                                <span style={{ color: 'var(--slate-400)' }}>Models</span>
-                                <span style={{ fontWeight: 600, color: 'var(--slate-50)' }}>google/mobilenet_v2</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 3: System Status */}
-                    <div className="medical-card reveal-delay-3" style={{ borderTop: '4px solid var(--amber-500)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <div style={{
-                                width: '40px', height: '40px',
-                                background: 'rgba(245, 158, 11, 0.1)',
-                                borderRadius: '8px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'var(--amber-500)'
-                            }}>
-                                <Icon name="surgery" className="w-6 h-6" />
-                            </div>
-                            <span className="badge badge-success">Active</span>
-                        </div>
-                        <h3 className="medical-card-title">Surgery</h3>
-                        <p className="medical-card-subtitle">Real-time Object Detection</p>
-                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--slate-700)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                                <span style={{ color: 'var(--slate-400)' }}>Model</span>
-                                <span style={{ fontWeight: 600, color: 'var(--slate-50)' }}>facebook/detr-resnet-50</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* PROJECT DESCRIPTION SECTION */}
-                <div className="grid-2 reveal" style={{ marginBottom: '4rem' }}>
-                    <div className="medical-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                            <div style={{
-                                width: '32px', height: '32px',
-                                background: 'rgba(14, 165, 233, 0.1)',
-                                borderRadius: '8px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'var(--sky-500)'
-                            }}>
-                                <Icon name="info" className="w-5 h-5" />
-                            </div>
-                            <h3 className="medical-card-title" style={{ marginBottom: 0 }}>About the Platform</h3>
-                        </div>
-                        <p style={{ color: 'var(--slate-400)', marginBottom: '1rem' }}>
-                            MediVision 360 is a comprehensive medical AI platform integrating state-of-the-art Hugging Face models for real-time diagnostics. Powered by ResNet, MobileNet, and Transformers, the platform delivers production-ready analysis across multiple medical specialties.
-                        </p>
-                        <p style={{ color: 'var(--slate-400)' }}>
-                            <strong style={{ color: 'var(--slate-300)' }}>Technology Stack:</strong> ResNet50 (NeuroRadiology), DETR (Surgery), MobileNetV2 (Dermatology). All models optimized for medical imaging with custom preprocessing pipelines.
-                        </p>
-                    </div>
-
-                    <div className="medical-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                            <div style={{
-                                width: '32px', height: '32px',
-                                background: 'rgba(16, 185, 129, 0.1)',
-                                borderRadius: '8px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'var(--emerald-500)'
-                            }}>
-                                <Icon name="layers" className="w-5 h-5" />
-                            </div>
-                            <h3 className="medical-card-title" style={{ marginBottom: 0 }}>Active Modules</h3>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.75rem', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '8px' }}>
-                                <Icon name="brain" className="w-4 h-4" style={{ color: 'var(--sky-500)', flexShrink: 0 }} />
-                                <strong style={{ color: 'var(--slate-200)', flex: 1, fontSize: '0.875rem' }}>NeuroRadiology</strong>
-                                <span className="badge badge-success" style={{ fontSize: '0.625rem' }}>Connected</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.75rem', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '8px' }}>
-                                <Icon name="dna" className="w-4 h-4" style={{ color: 'var(--emerald-500)', flexShrink: 0 }} />
-                                <strong style={{ color: 'var(--slate-200)', flex: 1, fontSize: '0.875rem' }}>Dermatology</strong>
-                                <span className="badge badge-success" style={{ fontSize: '0.625rem' }}>Connected</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.75rem', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '8px' }}>
-                                <Icon name="surgery" className="w-4 h-4" style={{ color: 'var(--amber-500)', flexShrink: 0 }} />
-                                <strong style={{ color: 'var(--slate-200)', flex: 1, fontSize: '0.875rem' }}>Surgery Monitoring</strong>
-                                <span className="badge badge-success" style={{ fontSize: '0.625rem' }}>Connected</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.75rem', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '8px' }}>
-                                <Icon name="pill" className="w-4 h-4" style={{ color: 'var(--violet-500)', flexShrink: 0 }} />
-                                <strong style={{ color: 'var(--slate-200)', flex: 1, fontSize: '0.875rem' }}>Pharmacy Scanner</strong>
-                                <span className="badge badge-success" style={{ fontSize: '0.625rem' }}>Connected</span>
-                            </div>
-                        </div>
-                    </div>
+                    ))}
                 </div>
             </div>
         </div>
     );
-}
+};
 
+// --- APP ROOT ---
 function App() {
     const [currentPage, setCurrentPage] = useState('dashboard');
     const [darkMode, setDarkMode] = useState(true);
 
-    // --- API HANDLERS ---
-    // Pass these handlers to the child components via props
-    const handleNeuroAnalysis = (file) => queryHuggingFace('neuro', file);
-    const handleDermaAnalysis = (file) => queryHuggingFace('derma', file);
-    const handlePharmaAnalysis = (file) => queryHuggingFace('pharmacy', file);
-    const handleSurgeryAnalysis = (file) => queryHuggingFace('surgery', file);
-
     const renderPage = () => {
         switch (currentPage) {
-            case 'neuro':
-                return <NeuroRadiology onAnalyze={handleNeuroAnalysis} />;
-            case 'derma':
-                return <Dermatology onAnalyze={handleDermaAnalysis} />;
-            case 'pharma':
-                return <Pharmacy onAnalyze={handlePharmaAnalysis} />;
-            case 'surgery':
-                return <Surgery onAnalyze={handleSurgeryAnalysis} />;
-            default:
-                return <Dashboard />;
+            case 'neuro': return <NeuroRadiology apiUrl={API_URL} />;
+            case 'derma': return <Dermatology apiUrl={API_URL} />;
+            case 'pharma': return <Pharmacy apiUrl={API_URL} />;
+            case 'surgery': return <Surgery apiUrl={API_URL} />;
+            default: return <Dashboard onNavigate={setCurrentPage} />;
         }
     };
 
     return (
-        <div
-            data-theme={darkMode ? 'dark' : 'light'}
-            style={{
-                display: 'flex',
-                minHeight: '100vh',
-                backgroundColor: 'var(--slate-900)',
-                color: 'var(--slate-50)',
-                transition: 'background-color 0.3s ease, color 0.3s ease'
-            }}
-        >
-            {/* Sidebar */}
-            <Sidebar
-                activePage={currentPage}
-                onNavigate={setCurrentPage}
-                darkMode={darkMode}
-                onToggleTheme={() => setDarkMode(!darkMode)}
-            />
-
-            {/* Main Content Area */}
-            <main style={{
-                marginLeft: '280px',
-                flex: 1,
-                minHeight: '100vh',
-                position: 'relative'
-            }}>
+        <div data-theme={darkMode ? 'dark' : 'light'} style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', fontFamily: 'sans-serif' }}>
+            <Sidebar activePage={currentPage} onNavigate={setCurrentPage} darkMode={darkMode} onToggleTheme={() => setDarkMode(!darkMode)} />
+            <main style={{ marginLeft: '280px', flex: 1, minHeight: '100vh', position: 'relative' }}>
                 {renderPage()}
             </main>
         </div>
